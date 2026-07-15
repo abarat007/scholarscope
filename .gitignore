@@ -1,0 +1,45 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Node / frontend
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Data dumps & model caches
+data/
+*.dump
+*.sqlite
+.cache/
+models/
+.huggingface/
+sentence_transformers/
+
+# Airflow runtime artifacts
+airflow/logs/
+airflow/*.pid
+airflow/airflow.db
+airflow/webserver_config.py
+airflow/simple_auth_manager_passwords.json.generated
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
