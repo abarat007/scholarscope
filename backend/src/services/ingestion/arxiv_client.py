@@ -139,7 +139,9 @@ class ArxivClient:
         backoff_base_s: float = 3.0,
         sleep: Sleep = asyncio.sleep,
     ):
-        self._http = http or httpx.AsyncClient(timeout=30.0)
+        # arXiv can take well over 30s to assemble large result pages for busy
+        # categories (cs.LG); connect failures should still surface quickly.
+        self._http = http or httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=10.0))
         self._owns_http = http is None
         self._rate_limiter = rate_limiter or _shared_rate_limiter
         self._max_retries = max_retries
