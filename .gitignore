@@ -23,12 +23,12 @@ node_modules/
 out/
 *.tsbuildinfo
 
-# Data dumps & model caches
-data/
+# Data dumps & model caches (root-anchored so they never shadow source packages)
+/data/
 *.dump
 *.sqlite
 .cache/
-models/
+/models/
 .huggingface/
 sentence_transformers/
 
