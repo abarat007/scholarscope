@@ -32,6 +32,8 @@ jobs:
         run: |
           set -o pipefail
           pytest -q 2>&1 | tee pytest.out || {
-            echo "::error title=pytest failed::$(tail -c 700 pytest.out | tr '\n' ' ')"
+            detail=$(sed -n '/=\{5,\} ERRORS/,$p' pytest.out)
+            [ -n "$detail" ] || detail=$(tail -c 3000 pytest.out)
+            echo "::error title=pytest failed::$(echo "$detail" | head -c 3000 | tr '\n' ' ')"
             exit 1
           }
