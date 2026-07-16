@@ -26,6 +26,10 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
+    @property
+    def postgres_async_dsn(self) -> str:
+        return self.postgres_dsn.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,7 +1,10 @@
 PYTHON ?= .venv/bin/python
 RUFF ?= .venv/bin/ruff
 
-.PHONY: start stop health test lint eval logs
+QUERY ?= cat:cs.CL
+MAX ?= 2000
+
+.PHONY: start stop health test test-integration lint eval logs backfill
 
 start:
 	docker compose up -d --build
@@ -14,6 +17,12 @@ health:
 
 test:
 	cd backend && ../$(PYTHON) -m pytest -q
+
+test-integration:
+	cd backend && POSTGRES_PORT=$${POSTGRES_PORT:-5433} ../$(PYTHON) -m pytest -q -m integration --override-ini "addopts="
+
+backfill:
+	docker compose exec backend python -m src.services.ingestion.backfill --query '$(QUERY)' --max-papers $(MAX)
 
 lint:
 	cd backend && ../$(RUFF) check src tests
