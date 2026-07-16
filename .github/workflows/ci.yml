@@ -27,4 +27,11 @@ jobs:
         run: ruff check src tests
 
       - name: Test (pytest)
-        run: pytest -q
+        # Surface the failure tail as a workflow annotation so failures are
+        # diagnosable from the public checks API without downloading logs.
+        run: |
+          set -o pipefail
+          pytest -q 2>&1 | tee pytest.out || {
+            echo "::error title=pytest failed::$(tail -c 700 pytest.out | tr '\n' ' ')"
+            exit 1
+          }
