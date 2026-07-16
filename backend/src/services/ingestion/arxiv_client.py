@@ -54,6 +54,11 @@ class AsyncRateLimiter:
             self._last_acquired = self._clock()
 
 
+# One limiter for the whole process: concurrent requests (e.g. the three DAG
+# category tasks) must share the 1-request-per-3s budget arXiv grants per client.
+_shared_rate_limiter = AsyncRateLimiter(MIN_REQUEST_INTERVAL_S)
+
+
 def _split_versioned_id(raw: str) -> tuple[str, int]:
     match = _VERSION_RE.search(raw)
     if match:
@@ -130,13 +135,13 @@ class ArxivClient:
         http: httpx.AsyncClient | None = None,
         *,
         rate_limiter: AsyncRateLimiter | None = None,
-        max_retries: int = 3,
-        backoff_base_s: float = 2.0,
+        max_retries: int = 4,
+        backoff_base_s: float = 3.0,
         sleep: Sleep = asyncio.sleep,
     ):
         self._http = http or httpx.AsyncClient(timeout=30.0)
         self._owns_http = http is None
-        self._rate_limiter = rate_limiter or AsyncRateLimiter(MIN_REQUEST_INTERVAL_S)
+        self._rate_limiter = rate_limiter or _shared_rate_limiter
         self._max_retries = max_retries
         self._backoff_base_s = backoff_base_s
         self._sleep = sleep
@@ -171,9 +176,10 @@ class ArxivClient:
                 resp.raise_for_status()
                 return resp.text
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code < 500:
+                status = exc.response.status_code
+                if status < 500 and status != 429:
                     raise  # client errors are our bug; retrying won't help
-                last_exc = exc
+                last_exc = exc  # 429 (rate limited) and 5xx are retryable
             except httpx.TransportError as exc:
                 last_exc = exc
             await self._sleep(self._backoff_base_s * 2**attempt)

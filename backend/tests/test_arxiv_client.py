@@ -118,6 +118,23 @@ async def test_search_retries_server_errors_with_backoff():
     assert 2.0 in t.sleeps and 4.0 in t.sleeps
 
 
+async def test_search_retries_rate_limit_responses():
+    t = FakeTime()
+    calls = {"count": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return httpx.Response(429)
+        return httpx.Response(200, text=SAMPLE_FEED)
+
+    client = _client_with_transport(handler, t)
+    papers = await client.search("cat:cs.CL")
+
+    assert calls["count"] == 2
+    assert len(papers) == 2
+
+
 async def test_search_does_not_retry_client_errors():
     t = FakeTime()
     calls = {"count": 0}
