@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-5"
 
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dims: int = 384
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
     @property
     def postgres_dsn(self) -> str:
         return (

@@ -98,10 +98,12 @@ services:
       AIRFLOW_URL: http://airflow:8080
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-5}
+      HF_HOME: /hf-cache
     ports:
       - "8000:8000"
     volumes:
       - ./backend/src:/app/src
+      - hfcache:/hf-cache
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=3)\""]
       interval: 10s
@@ -112,3 +114,4 @@ services:
 volumes:
   pgdata:
   osdata:
+  hfcache:
