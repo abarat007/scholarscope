@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.db import init_db
-from src.routers import health, ingest, search
+from src.routers import health, ingest, landscape, papers, search
 from src.services.retrieval.indexing import ensure_index
 from src.services.retrieval.os_client import get_os_client
 
@@ -20,6 +20,8 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["health"])
     app.include_router(ingest.router, tags=["ingestion"])
     app.include_router(search.router, tags=["search"])
+    app.include_router(landscape.router, tags=["landscape"])
+    app.include_router(papers.router, tags=["papers"])
     return app
 
 
