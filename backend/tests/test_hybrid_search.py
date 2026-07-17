@@ -29,7 +29,7 @@ def _stub_searches(monkeypatch, bm25_ids: list[str], dense_ids: list[str]):
 async def test_hybrid_promotes_docs_found_by_both_retrievers(monkeypatch):
     _stub_searches(monkeypatch, ["a", "b", "c"], ["d", "b", "e"])
 
-    hits = await search_module.hybrid_search("query", k=3)
+    hits = await search_module.hybrid_search("query", k=3, rerank=False)
 
     assert hits[0].arxiv_id == "b"
     assert len(hits) == 3
@@ -38,7 +38,7 @@ async def test_hybrid_promotes_docs_found_by_both_retrievers(monkeypatch):
 async def test_hybrid_scores_are_rrf_not_raw_engine_scores(monkeypatch):
     _stub_searches(monkeypatch, ["a"], ["a"])
 
-    hits = await search_module.hybrid_search("query", k=1)
+    hits = await search_module.hybrid_search("query", k=1, rerank=False)
 
     # raw scores were 10.0 (bm25) and 1.0 (dense); RRF replaces them
     assert hits[0].score < 1.0
@@ -47,6 +47,42 @@ async def test_hybrid_scores_are_rrf_not_raw_engine_scores(monkeypatch):
 async def test_hybrid_respects_k(monkeypatch):
     _stub_searches(monkeypatch, ["a", "b", "c", "d"], ["e", "f", "g", "h"])
 
-    hits = await search_module.hybrid_search("query", k=5)
+    hits = await search_module.hybrid_search("query", k=5, rerank=False)
 
     assert len(hits) == 5
+
+
+class ReverseReranker:
+    """Deterministic stand-in: reverses candidate order, scores 100, 99, ..."""
+
+    def rerank(self, query, candidates, *, top_k):
+        reversed_ids = [doc_id for doc_id, _ in reversed(candidates)]
+        return [(doc_id, 100.0 - i) for i, doc_id in enumerate(reversed_ids)][:top_k]
+
+
+async def test_rerank_toggle_changes_ordering_and_scores(monkeypatch):
+    _stub_searches(monkeypatch, ["a", "b", "c"], ["a", "b", "c"])
+    monkeypatch.setattr(search_module, "get_reranker", lambda: ReverseReranker())
+
+    plain = await search_module.hybrid_search("query", k=3, rerank=False)
+    reranked = await search_module.hybrid_search("query", k=3, rerank=True)
+
+    assert [h.arxiv_id for h in plain] == ["a", "b", "c"]
+    assert [h.arxiv_id for h in reranked] == ["c", "b", "a"]
+    assert reranked[0].score == 100.0  # cross-encoder score, not RRF
+
+
+async def test_rerank_pool_is_bounded_by_candidates(monkeypatch):
+    _stub_searches(monkeypatch, [f"b{i}" for i in range(30)], [f"d{i}" for i in range(30)])
+    captured: dict = {}
+
+    class CapturingReranker:
+        def rerank(self, query, candidates, *, top_k):
+            captured["pool_size"] = len(candidates)
+            return [(doc_id, 1.0) for doc_id, _ in candidates[:top_k]]
+
+    monkeypatch.setattr(search_module, "get_reranker", lambda: CapturingReranker())
+
+    await search_module.hybrid_search("query", k=10, candidates=40, rerank=True)
+
+    assert captured["pool_size"] == 40  # 60 unique docs fused, pool capped at 40

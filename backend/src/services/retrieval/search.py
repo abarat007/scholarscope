@@ -8,10 +8,12 @@ import asyncio
 from datetime import date
 
 from src.schemas.search import SearchHit
+from src.services.ingestion.chunking import paper_chunk
 from src.services.retrieval.embeddings import get_embedding_service
 from src.services.retrieval.fusion import reciprocal_rank_fusion
 from src.services.retrieval.indexing import INDEX_NAME
 from src.services.retrieval.os_client import get_os_client
+from src.services.retrieval.reranker import get_reranker
 
 SOURCE_FIELDS = ["arxiv_id", "title", "abstract", "primary_category", "published_at"]
 
@@ -126,14 +128,17 @@ async def hybrid_search(
     *,
     k: int = 10,
     candidates: int = 50,
+    rerank: bool = True,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
 ) -> list[SearchHit]:
-    """BM25 and dense retrieval fused with RRF; returns the top-k of the fusion.
+    """BM25 + dense retrieval fused with RRF, optionally cross-encoder reranked.
 
-    Hit scores are replaced by RRF scores, which are only comparable within
-    a single query's result list.
+    The rerank toggle is a first-class pipeline stage so the Phase 6 eval can
+    A/B hybrid vs hybrid+reranker on identical candidate sets. Scores are RRF
+    scores when rerank=False and cross-encoder relevance scores when True —
+    either way only comparable within a single query's result list.
     """
     bm25_hits, dense_hits = await asyncio.gather(
         bm25_search(
@@ -161,6 +166,14 @@ async def hybrid_search(
             [hit.arxiv_id for hit in dense_hits],
         ]
     )
-    return [
-        hits_by_id[doc_id].model_copy(update={"score": score}) for doc_id, score in fused[:k]
+    if not rerank:
+        return [
+            hits_by_id[doc_id].model_copy(update={"score": score}) for doc_id, score in fused[:k]
+        ]
+
+    pool = [
+        (doc_id, paper_chunk(hits_by_id[doc_id].title, hits_by_id[doc_id].abstract))
+        for doc_id, _ in fused[:candidates]
     ]
+    reranked = await asyncio.to_thread(get_reranker().rerank, q, pool, top_k=k)
+    return [hits_by_id[doc_id].model_copy(update={"score": score}) for doc_id, score in reranked]

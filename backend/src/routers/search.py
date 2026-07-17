@@ -18,6 +18,7 @@ async def search_hybrid(
     q: QueryText,
     k: TopK = 10,
     candidates: Annotated[int, Query(ge=10, le=100)] = 50,
+    rerank: bool = True,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
@@ -27,6 +28,7 @@ async def search_hybrid(
         q,
         k=k,
         candidates=candidates,
+        rerank=rerank,
         category=category,
         published_from=published_from,
         published_to=published_to,
@@ -34,7 +36,7 @@ async def search_hybrid(
     return SearchResponse(
         query=q,
         mode="hybrid",
-        reranked=False,
+        reranked=rerank,
         took_ms=round((time.perf_counter() - started) * 1000, 1),
         hits=hits,
     )
