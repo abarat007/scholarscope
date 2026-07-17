@@ -29,6 +29,23 @@ def test_open_ended_date_range():
     assert filters == [{"range": {"published_at": {"gte": "2026-01-01"}}}]
 
 
+def test_knn_query_embeds_filters_inside_knn_clause():
+    from src.services.retrieval.search import build_knn_query
+
+    body = build_knn_query([0.1] * 4, k=25, category="cs.CL")
+    knn = body["query"]["knn"]["embedding"]
+    assert knn["k"] == 25
+    assert knn["vector"] == [0.1] * 4
+    assert knn["filter"] == {"bool": {"filter": [{"term": {"categories": "cs.CL"}}]}}
+
+
+def test_knn_query_omits_filter_when_unfiltered():
+    from src.services.retrieval.search import build_knn_query
+
+    body = build_knn_query([0.1] * 4, k=10)
+    assert "filter" not in body["query"]["knn"]["embedding"]
+
+
 def test_parse_hits_maps_source_and_score():
     body = {
         "hits": {
