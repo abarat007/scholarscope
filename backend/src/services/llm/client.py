@@ -56,24 +56,29 @@ class AnthropicLLM:
     async def parse(
         self, *, system: str, user: str, schema: type[ModelT], max_tokens: int = 2000
     ) -> LLMResult:
-        response = await self._client.messages.parse(
-            model=self._model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-            output_format=schema,
-        )
-        if response.parsed_output is None:
-            raise RuntimeError(
-                f"structured output parse failed (stop_reason={response.stop_reason})"
+        from src.services.observability import get_tracer
+
+        with get_tracer().generation(name=f"parse:{schema.__name__}", model=self._model) as gen:
+            response = await self._client.messages.parse(
+                model=self._model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+                output_format=schema,
             )
-        return LLMResult(
-            output=response.parsed_output,
-            usage=LLMUsage(
+            if response.parsed_output is None:
+                raise RuntimeError(
+                    f"structured output parse failed (stop_reason={response.stop_reason})"
+                )
+            usage = LLMUsage(
                 input_tokens=response.usage.input_tokens,
                 output_tokens=response.usage.output_tokens,
-            ),
-        )
+            )
+            if gen is not None:
+                gen.update(
+                    usage_details={"input": usage.input_tokens, "output": usage.output_tokens}
+                )
+            return LLMResult(output=response.parsed_output, usage=usage)
 
 
 _llm: StructuredLLM | None = None

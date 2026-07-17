@@ -21,6 +21,7 @@ from src.schemas.search import SearchHit
 from src.services.cache.semantic import SemanticTopicCache
 from src.services.guardrails.input_rails import REFUSAL_MESSAGE, run_input_rails
 from src.services.llm.client import LLMUsage, StructuredLLM
+from src.services.observability import get_tracer
 from src.services.retrieval.embeddings import EmbeddingService
 
 MAX_REFINES = 2
@@ -147,14 +148,21 @@ def build_agent_graph(deps: AgentDeps):
             return "refine"
         return "give_up"  # proceed with what we have rather than fail the build
 
+    def traced(name: str, fn):
+        async def wrapper(state: AgentState) -> dict:
+            with get_tracer().span(f"agent.{name}"):
+                return await fn(state)
+
+        return wrapper
+
     builder = StateGraph(AgentState)
-    builder.add_node("validate_input", validate_input)
-    builder.add_node("check_cache", check_cache)
-    builder.add_node("retrieve", retrieve)
-    builder.add_node("grade_relevance", grade_relevance)
-    builder.add_node("refine_query", refine_query)
-    builder.add_node("synthesize", synthesize)
-    builder.add_node("finalize", finalize)
+    builder.add_node("validate_input", traced("validate_input", validate_input))
+    builder.add_node("check_cache", traced("check_cache", check_cache))
+    builder.add_node("retrieve", traced("retrieve", retrieve))
+    builder.add_node("grade_relevance", traced("grade_relevance", grade_relevance))
+    builder.add_node("refine_query", traced("refine_query", refine_query))
+    builder.add_node("synthesize", traced("synthesize", synthesize))
+    builder.add_node("finalize", traced("finalize", finalize))
 
     builder.set_entry_point("validate_input")
     builder.add_conditional_edges(

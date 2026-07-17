@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     llm_input_cost_per_mtok: float = 2.0
     llm_output_cost_per_mtok: float = 10.0
 
+    langfuse_host: str = ""
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dims: int = 384
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
