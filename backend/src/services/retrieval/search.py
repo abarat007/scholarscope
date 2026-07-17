@@ -9,6 +9,7 @@ from datetime import date
 
 from src.schemas.search import SearchHit
 from src.services.retrieval.embeddings import get_embedding_service
+from src.services.retrieval.fusion import reciprocal_rank_fusion
 from src.services.retrieval.indexing import INDEX_NAME
 from src.services.retrieval.os_client import get_os_client
 
@@ -118,3 +119,48 @@ async def bm25_search(
     resp = await get_os_client().post(f"/{INDEX_NAME}/_search", json=body)
     resp.raise_for_status()
     return parse_hits(resp.json())
+
+
+async def hybrid_search(
+    q: str,
+    *,
+    k: int = 10,
+    candidates: int = 50,
+    category: str | None = None,
+    published_from: date | None = None,
+    published_to: date | None = None,
+) -> list[SearchHit]:
+    """BM25 and dense retrieval fused with RRF; returns the top-k of the fusion.
+
+    Hit scores are replaced by RRF scores, which are only comparable within
+    a single query's result list.
+    """
+    bm25_hits, dense_hits = await asyncio.gather(
+        bm25_search(
+            q,
+            k=candidates,
+            category=category,
+            published_from=published_from,
+            published_to=published_to,
+        ),
+        dense_search(
+            q,
+            k=candidates,
+            category=category,
+            published_from=published_from,
+            published_to=published_to,
+        ),
+    )
+    hits_by_id: dict[str, SearchHit] = {}
+    for hit in [*bm25_hits, *dense_hits]:
+        hits_by_id.setdefault(hit.arxiv_id, hit)
+
+    fused = reciprocal_rank_fusion(
+        [
+            [hit.arxiv_id for hit in bm25_hits],
+            [hit.arxiv_id for hit in dense_hits],
+        ]
+    )
+    return [
+        hits_by_id[doc_id].model_copy(update={"score": score}) for doc_id, score in fused[:k]
+    ]

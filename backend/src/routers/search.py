@@ -13,6 +13,33 @@ QueryText = Annotated[str, Query(min_length=1, max_length=500)]
 TopK = Annotated[int, Query(ge=1, le=50)]
 
 
+@router.get("/hybrid", response_model=SearchResponse)
+async def search_hybrid(
+    q: QueryText,
+    k: TopK = 10,
+    candidates: Annotated[int, Query(ge=10, le=100)] = 50,
+    category: str | None = None,
+    published_from: date | None = None,
+    published_to: date | None = None,
+) -> SearchResponse:
+    started = time.perf_counter()
+    hits = await search_service.hybrid_search(
+        q,
+        k=k,
+        candidates=candidates,
+        category=category,
+        published_from=published_from,
+        published_to=published_to,
+    )
+    return SearchResponse(
+        query=q,
+        mode="hybrid",
+        reranked=False,
+        took_ms=round((time.perf_counter() - started) * 1000, 1),
+        hits=hits,
+    )
+
+
 @router.get("/dense", response_model=SearchResponse)
 async def search_dense(
     q: QueryText,
