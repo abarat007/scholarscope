@@ -18,6 +18,9 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-5"
+    # Sonnet 5 introductory pricing ($/MTok) through 2026-08-31; override via env after.
+    llm_input_cost_per_mtok: float = 2.0
+    llm_output_cost_per_mtok: float = 10.0
 
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dims: int = 384
