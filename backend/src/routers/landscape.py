@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import get_settings
 from src.db import get_session
 from src.models.paper import Paper
 from src.schemas.landscape import BuildResult, LandscapeGraph
@@ -23,6 +24,11 @@ async def build_topic(
     papers: Annotated[int, Query(ge=5, le=50)] = 30,
 ) -> BuildResult:
     """Build a topic's landscape, or grow an existing one with new papers."""
+    if not get_settings().anthropic_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY is not configured; set it in .env and restart the stack",
+        )
     try:
         return await build_or_update_topic(session, topic, paper_count=papers)
     except ValueError as exc:
