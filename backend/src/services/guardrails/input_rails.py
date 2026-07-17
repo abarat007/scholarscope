@@ -24,7 +24,8 @@ _INJECTION_PATTERNS = [
     r"ignore (?:all |any )?(?:previous|prior|above|earlier) "
     r"(?:instructions|prompts|rules|messages)",
     r"disregard (?:your|the|all|any) (?:instructions|system prompt|rules|guidelines)",
-    r"forget (?:everything|all|your) (?:previous |prior )?(?:instructions|rules|training)",
+    r"forget (?:everything|all|your|what) "
+    r"(?:previous |prior )?(?:instructions|rules|training|you (?:were|have been))",
     r"(?:reveal|show|print|output|repeat|leak) (?:your|the) "
     r"(?:system )?(?:prompt|instructions|rules)",
     r"you are (?:now|no longer) ",
