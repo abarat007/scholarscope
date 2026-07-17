@@ -4,11 +4,14 @@ from fastapi import FastAPI
 
 from src.db import init_db
 from src.routers import health, ingest
+from src.services.retrieval.indexing import ensure_index
+from src.services.retrieval.os_client import get_os_client
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await ensure_index(get_os_client())
     yield
 
 

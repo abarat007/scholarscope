@@ -13,3 +13,4 @@ class IngestResult(BaseModel):
     within_window: int
     inserted: int
     updated: int
+    indexed: int = 0

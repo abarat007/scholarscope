@@ -20,6 +20,11 @@ dev = [
     "pytest-asyncio>=0.23",
     "ruff>=0.5",
 ]
+# Heavy inference deps (torch) kept out of the base install so CI stays fast;
+# the Docker image installs them, unit tests inject fake models.
+ml = [
+    "sentence-transformers>=3.0",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
