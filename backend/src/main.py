@@ -13,6 +13,9 @@ async def lifespan(app: FastAPI):
     await init_db()
     await ensure_index(get_os_client())
     yield
+    from src.services.observability import get_tracer
+
+    get_tracer().flush()
 
 
 def create_app() -> FastAPI:

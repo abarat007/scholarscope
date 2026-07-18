@@ -42,6 +42,15 @@ async def check_redis(settings: Settings) -> str | None:
     return None
 
 
+async def check_langfuse(settings: Settings) -> str | None:
+    if not settings.langfuse_host:
+        return "not configured"
+    async with httpx.AsyncClient(timeout=CHECK_TIMEOUT_S) as client:
+        resp = await client.get(f"{settings.langfuse_host}/api/public/health")
+        resp.raise_for_status()
+        return None
+
+
 async def check_airflow(settings: Settings) -> str | None:
     # Health path moved between Airflow major versions; accept either.
     async with httpx.AsyncClient(timeout=CHECK_TIMEOUT_S) as client:
@@ -60,6 +69,7 @@ CHECKS: dict[str, Check] = {
     "opensearch": check_opensearch,
     "redis": check_redis,
     "airflow": check_airflow,
+    "langfuse": check_langfuse,
 }
 
 

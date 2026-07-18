@@ -13,7 +13,7 @@ from src.config import get_settings
 
 class KVCache(Protocol):
     async def get(self, key: str) -> str | None: ...
-    async def set(self, key: str, value: str) -> None: ...
+    async def set(self, key: str, value: str, *, ttl_s: int | None = None) -> None: ...
 
 
 class RedisCache:
@@ -23,19 +23,22 @@ class RedisCache:
     async def get(self, key: str) -> str | None:
         return await self._redis.get(key)
 
-    async def set(self, key: str, value: str) -> None:
-        await self._redis.set(key, value)
+    async def set(self, key: str, value: str, *, ttl_s: int | None = None) -> None:
+        await self._redis.set(key, value, ex=ttl_s)
 
 
 class InMemoryCache:
     def __init__(self):
         self.data: dict[str, str] = {}
+        self.ttls: dict[str, int] = {}
 
     async def get(self, key: str) -> str | None:
         return self.data.get(key)
 
-    async def set(self, key: str, value: str) -> None:
+    async def set(self, key: str, value: str, *, ttl_s: int | None = None) -> None:
         self.data[key] = value
+        if ttl_s is not None:
+            self.ttls[key] = ttl_s
 
 
 _cache: KVCache | None = None
