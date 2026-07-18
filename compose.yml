@@ -129,6 +129,9 @@ services:
     ports:
       - "3000:3000"
     environment: &langfuse-env
+      # Bind Next.js standalone to all interfaces so the container healthcheck
+      # (127.0.0.1) works, not just cross-container hostname access.
+      HOSTNAME: "0.0.0.0"
       DATABASE_URL: postgresql://langfuse:langfuse@postgres:5432/langfuse
       SALT: scholarscope-dev-salt
       ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
@@ -158,11 +161,11 @@ services:
       LANGFUSE_INIT_USER_NAME: Dev
       LANGFUSE_INIT_USER_PASSWORD: scholarscope-dev
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/public/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/public/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 20
-      start_period: 60s
+      start_period: 90s
 
   langfuse-worker:
     image: langfuse/langfuse-worker:3
@@ -186,11 +189,13 @@ services:
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping || exit 1"]
+      # 127.0.0.1, not localhost: ClickHouse binds IPv4 only, and localhost
+      # resolves to ::1 first inside the container.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 20s
+      retries: 18
+      start_period: 60s
 
   minio:
     image: minio/minio:latest
