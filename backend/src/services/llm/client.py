@@ -58,7 +58,8 @@ class AnthropicLLM:
     ) -> LLMResult:
         from src.services.observability import get_tracer
 
-        with get_tracer().generation(name=f"parse:{schema.__name__}", model=self._model) as gen:
+        tracer = get_tracer()
+        with tracer.generation(name=f"parse:{schema.__name__}", model=self._model) as gen:
             response = await self._client.messages.parse(
                 model=self._model,
                 max_tokens=max_tokens,
@@ -74,10 +75,9 @@ class AnthropicLLM:
                 input_tokens=response.usage.input_tokens,
                 output_tokens=response.usage.output_tokens,
             )
-            if gen is not None:
-                gen.update(
-                    usage_details={"input": usage.input_tokens, "output": usage.output_tokens}
-                )
+            tracer.update_generation(
+                gen, input_tokens=usage.input_tokens, output_tokens=usage.output_tokens
+            )
             return LLMResult(output=response.parsed_output, usage=usage)
 
 
