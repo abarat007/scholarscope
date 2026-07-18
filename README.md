@@ -9,11 +9,14 @@ outputs, and synthesizes a cross-paper research landscape — clusters,
 relationships, tensions, and open problems — rendered as an interactive reading
 map that grows as you explore more topics.
 
-> **Status:** Phase 1 — infrastructure skeleton. See the build phases below.
+> **Status:** end-to-end pipeline working — ingestion, hybrid retrieval +
+> reranking, extraction, LLM synthesis, LangGraph agent with guardrails, Redis
+> caching, Langfuse tracing, and a Next.js reading-map frontend. Retrieval and
+> guardrails run without any API key; landscape synthesis needs a funded
+> `ANTHROPIC_API_KEY`. Evaluation (RAGAS + retrieval metrics) is the remaining
+> phase. See [DEMO.md](DEMO.md) for a walkthrough.
 
 ## Architecture
-
-*Architecture diagram coming soon.*
 
 ```
 arXiv API → Airflow ingestion → Postgres + OpenSearch (BM25 + k-NN)
@@ -21,6 +24,15 @@ arXiv API → Airflow ingestion → Postgres + OpenSearch (BM25 + k-NN)
     → structured extraction (Claude, Pydantic schemas) → landscape synthesis
     → FastAPI + LangGraph (guardrails, Redis caching, Langfuse tracing)
     → Next.js reading map
+```
+
+## Run it
+
+```bash
+cp .env.example .env   # optionally add ANTHROPIC_API_KEY for landscape synthesis
+make start             # bring up the 10-service stack
+make health            # all dependencies "ok"
+make frontend          # Next.js UI on http://localhost:3000
 ```
 
 ## Stack

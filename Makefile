@@ -4,7 +4,7 @@ RUFF ?= .venv/bin/ruff
 QUERY ?= cat:cs.CL
 MAX ?= 2000
 
-.PHONY: start stop health test test-integration lint eval logs backfill
+.PHONY: start stop health test test-integration lint eval logs backfill frontend reindex demo-landscapes
 
 start:
 	docker compose up -d --build
@@ -23,6 +23,19 @@ test-integration:
 
 backfill:
 	docker compose exec backend python -m src.services.ingestion.backfill --query '$(QUERY)' --max-papers $(MAX)
+
+reindex:
+	docker compose exec backend python -m src.services.retrieval.reindex
+
+frontend:
+	cd frontend && npm install && npm run dev
+
+# Build a few landscapes for a demo (requires ANTHROPIC_API_KEY with credits).
+demo-landscapes:
+	@for t in "retrieval augmented generation" "cross-encoder reranking" "llm agents"; do \
+		echo "building: $$t"; \
+		curl -s -X POST "http://localhost:8000/landscape/$$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$$t")/build?papers=30" | python3 -m json.tool; \
+	done
 
 lint:
 	cd backend && ../$(RUFF) check src tests
