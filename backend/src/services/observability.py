@@ -46,21 +46,27 @@ class Tracer:
         if self._client is None:
             yield None
             return
+        # Guard only the SDK's enter; a failure here disables tracing but must
+        # not affect the wrapped body.
         try:
             cm = self._client.start_as_current_observation(
                 name=name, as_type=as_type, **kwargs
             )
+            observation = cm.__enter__()
         except Exception as exc:  # SDK API drift or transport issue
             self._disable(exc)
             yield None
             return
+        # The body runs under `yield`. Its exceptions must propagate unchanged;
+        # only the SDK's exit is guarded. Passing no exc_info to __exit__ keeps
+        # a tracing layer from ever re-raising over the real error.
         try:
-            with cm as observation:
-                yield observation
-        except Exception as exc:
-            # Never let a tracing failure escape into the request path.
-            self._disable(exc)
-            yield None
+            yield observation
+        finally:
+            try:
+                cm.__exit__(None, None, None)
+            except Exception as exc:
+                self._disable(exc)
 
     def span(self, name: str, **metadata):
         return self._observation(name, "span", metadata=metadata or None)
