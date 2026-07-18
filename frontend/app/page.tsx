@@ -11,15 +11,15 @@ export default function Home({ searchParams }: { searchParams: { q?: string } })
   return (
     <div>
       {!query && (
-        <section className="pb-16">
-          <Label className="mb-8 block">Est. arXiv · cs.CL / cs.AI / cs.LG</Label>
+        <section className="pb-8">
+          <Label className="mb-4 block">Est. arXiv · cs.CL / cs.AI / cs.LG</Label>
           <h1 className="font-display font-black leading-none tracking-tighter">
-            <span className="block text-5xl md:text-7xl lg:text-8xl">Map the</span>
-            <span className="block text-6xl italic md:text-8xl lg:text-9xl">research</span>
-            <span className="block text-5xl md:text-7xl lg:text-8xl">landscape.</span>
+            <span className="block text-3xl md:text-4xl lg:text-5xl">Map the</span>
+            <span className="block text-4xl italic md:text-5xl lg:text-6xl">research</span>
+            <span className="block text-3xl md:text-4xl lg:text-5xl">landscape.</span>
           </h1>
-          <div className="mt-10 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
-            <p className="max-w-xl font-serif text-lg text-secondary md:text-xl">
+          <div className="mt-6 grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
+            <p className="max-w-xl font-serif text-base text-secondary md:text-lg">
               Hybrid retrieval over a live corpus, cross-encoder reranking, and
               LLM-synthesized clusters — rendered as a reading map that grows as you explore.
             </p>
@@ -29,7 +29,7 @@ export default function Home({ searchParams }: { searchParams: { q?: string } })
               to begin ↓
             </Label>
           </div>
-          <RuleMark className="mt-12" />
+          <RuleMark className="mt-6" />
         </section>
       )}
 
