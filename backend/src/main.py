@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from src.config import get_settings
 from src.db import init_db
 from src.routers import health, ingest, landscape, papers, search
 from src.services.retrieval.indexing import ensure_index
@@ -20,6 +22,12 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="ScholarScope API", version="0.1.0", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_settings().cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(health.router, tags=["health"])
     app.include_router(ingest.router, tags=["ingestion"])
     app.include_router(search.router, tags=["search"])
