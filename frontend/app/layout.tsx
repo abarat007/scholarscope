@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
 
         <header className="border-b-4 border-foreground">
-          <div className="mx-auto flex max-w-editorial items-end justify-between px-6 py-6 md:px-8 lg:px-12">
+          <div className="mx-auto flex max-w-editorial items-end justify-between px-6 py-4 md:px-8 lg:px-12">
             <Link
               href="/"
               className="group focus-visible:outline-none"
@@ -54,12 +54,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        <main id="main" className="mx-auto max-w-editorial px-6 py-16 md:px-8 md:py-24 lg:px-12">
+        <main id="main" className="mx-auto max-w-editorial px-6 py-6 md:px-8 md:py-8 lg:px-12">
           {children}
         </main>
 
         <footer className="border-t-4 border-foreground">
-          <div className="mx-auto flex max-w-editorial flex-col gap-1 px-6 py-8 font-mono text-xs uppercase tracking-widest text-secondary md:flex-row md:items-center md:justify-between md:px-8 lg:px-12">
+          <div className="mx-auto flex max-w-editorial flex-col gap-1 px-6 py-5 font-mono text-xs uppercase tracking-widest text-secondary md:flex-row md:items-center md:justify-between md:px-8 lg:px-12">
             <span>ScholarScope</span>
             <span>Hybrid Retrieval · Reranking · LLM Synthesis</span>
           </div>
