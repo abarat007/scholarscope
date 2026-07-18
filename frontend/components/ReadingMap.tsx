@@ -2,6 +2,7 @@
 
 import {
   Background,
+  BackgroundVariant,
   Controls,
   Handle,
   Position,
@@ -15,8 +16,6 @@ import { useMemo, useState } from "react";
 import type { LandscapeGraph } from "@/lib/api";
 import PaperCard from "./PaperCard";
 
-// Deterministic radial layout: clusters on an inner ring, their papers fanned
-// around each cluster. Keeps the graph readable without a physics engine.
 const CLUSTER_RADIUS = 340;
 const PAPER_RADIUS = 150;
 
@@ -26,30 +25,34 @@ type NodeData = {
   isNew?: boolean;
 };
 
+// Cluster: heavy black-bordered box, serif label. The structural anchors.
 function ClusterNode({ data }: NodeProps) {
   const d = data as NodeData;
   return (
-    <div className="rounded-xl border-2 border-accent bg-accent/15 px-4 py-2.5 text-center shadow-lg max-w-[180px]">
-      <Handle type="source" position={Position.Top} className="!opacity-0" />
-      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
-      <span className="text-sm font-semibold text-accent-soft leading-tight">{d.label}</span>
+    <div className="max-w-[190px] border-2 border-black bg-white px-4 py-2.5 text-center">
+      <Handle type="source" position={Position.Top} className="!border-0 !bg-black !opacity-0" />
+      <Handle type="target" position={Position.Bottom} className="!border-0 !bg-black !opacity-0" />
+      <span className="block font-display text-sm font-bold leading-tight text-black">
+        {d.label}
+      </span>
     </div>
   );
 }
 
+// Paper: hairline box. "New" papers invert to a black field (no color, per spec).
 function PaperNode({ data }: NodeProps) {
   const d = data as NodeData;
   return (
     <div
-      className={`rounded-lg border bg-ink-800/90 px-2.5 py-1.5 max-w-[150px] cursor-pointer hover:border-accent transition-colors ${
-        d.isNew ? "border-emerald-500/70" : "border-ink-600"
+      className={`max-w-[150px] cursor-pointer border px-2.5 py-1.5 transition-colors duration-100 ${
+        d.isNew ? "border-black bg-black text-white" : "border-black bg-white text-black hover:bg-black hover:text-white"
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!opacity-0" />
+      <Handle type="target" position={Position.Top} className="!border-0 !bg-black !opacity-0" />
       {d.isNew && (
-        <span className="block text-[9px] uppercase tracking-wide text-emerald-400 mb-0.5">new</span>
+        <span className="mb-0.5 block font-mono text-[8px] uppercase tracking-widest">New</span>
       )}
-      <span className="text-[11px] text-slate-300 leading-tight line-clamp-3 block">{d.label}</span>
+      <span className="block font-serif text-[11px] leading-tight line-clamp-3">{d.label}</span>
     </div>
   );
 }
@@ -76,15 +79,11 @@ export default function ReadingMap({
       nodes.push({
         id: c.id,
         type: "cluster",
-        position: {
-          x: Math.cos(angle) * CLUSTER_RADIUS,
-          y: Math.sin(angle) * CLUSTER_RADIUS,
-        },
+        position: { x: Math.cos(angle) * CLUSTER_RADIUS, y: Math.sin(angle) * CLUSTER_RADIUS },
         data: { label: c.label, kind: "cluster" } satisfies NodeData,
       });
     });
 
-    // group papers by their cluster to fan them out locally
     const papersByCluster = new Map<number, string[]>();
     for (const n of graph.nodes) {
       if (n.type === "paper" && n.cluster_id !== null) {
@@ -122,20 +121,19 @@ export default function ReadingMap({
       source: e.source,
       target: e.target,
       label: e.type === "relationship" ? e.label ?? undefined : undefined,
-      animated: e.type === "relationship",
+      animated: false,
       style: {
-        stroke: e.type === "relationship" ? "#7c9cff" : "#3a3a4d",
+        stroke: "#000000",
         strokeWidth: e.type === "relationship" ? 2 : 1,
+        strokeDasharray: e.type === "relationship" ? undefined : "4 4",
       },
-      labelStyle: { fill: "#a5b8ff", fontSize: 10 },
-      labelBgStyle: { fill: "#12121a" },
     }));
 
     return { nodes, edges };
   }, [graph, latestVersion]);
 
   return (
-    <div className="relative h-[640px] rounded-xl border border-ink-800 bg-ink-950 overflow-hidden">
+    <div className="relative h-[640px] border-2 border-foreground bg-white">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -147,8 +145,8 @@ export default function ReadingMap({
           if (node.type === "paper") setSelected(node.id);
         }}
       >
-        <Background color="#282836" gap={24} />
-        <Controls className="!bg-ink-800 !border-ink-700" />
+        <Background variant={BackgroundVariant.Dots} color="#d4d4d4" gap={28} size={1} />
+        <Controls />
       </ReactFlow>
       {selected && <PaperCard arxivId={selected} onClose={() => setSelected(null)} />}
     </div>

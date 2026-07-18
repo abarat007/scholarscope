@@ -22,40 +22,51 @@ export default function PaperCard({
   }, [arxivId]);
 
   return (
-    <div className="absolute top-0 right-0 h-full w-full max-w-md border-l border-ink-800 bg-ink-900/95 backdrop-blur p-5 overflow-y-auto z-10 animate-fade-in">
-      <div className="flex items-start justify-between gap-3">
-        <span className="font-mono text-xs text-slate-500">{arxivId}</span>
-        <button onClick={onClose} className="text-slate-500 hover:text-slate-200 text-lg leading-none">
+    <div className="absolute right-0 top-0 z-10 h-full w-full max-w-md overflow-y-auto border-l-2 border-foreground bg-background p-6 animate-fade-up">
+      <div className="flex items-start justify-between gap-3 border-b border-line pb-3">
+        <span className="font-mono text-xs uppercase tracking-widest text-secondary">{arxivId}</span>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="font-mono text-sm leading-none text-foreground hover:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-offset-2"
+        >
           ✕
         </button>
       </div>
 
-      {loading && <p className="text-sm text-slate-500 mt-4 animate-pulse">Loading…</p>}
+      {loading && (
+        <p className="mt-6 font-mono text-xs uppercase tracking-widest text-secondary">Loading…</p>
+      )}
 
       {!loading && data && (
-        <div className="mt-2 space-y-4">
-          <h3 className="font-medium text-slate-100 leading-snug">{data.title}</h3>
+        <div className="mt-4 space-y-5">
+          <h3 className="font-display text-2xl leading-snug">{data.title}</h3>
           <a
             href={arxivAbsUrl(arxivId)}
             target="_blank"
             rel="noreferrer"
-            className="inline-block text-xs text-accent hover:text-accent-soft"
+            className="inline-block font-mono text-xs uppercase tracking-widest underline decoration-transparent underline-offset-4 hover:decoration-foreground"
           >
             View on arXiv →
           </a>
 
           {data.extraction ? (
-            <dl className="space-y-3">
+            <dl className="divide-y divide-line border-t border-line">
               <Field label="Problem" value={data.extraction.problem} />
               <Field label="Method" value={data.extraction.method} />
               <Field label="Results" value={data.extraction.results} />
               <Field label="Contribution" value={data.extraction.contribution} />
               <Field label="Limitations" value={data.extraction.limitations} />
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-slate-500 mb-1">Key terms</dt>
+              <div className="py-4">
+                <dt className="mb-2 font-mono text-xs uppercase tracking-widest text-secondary">
+                  Key terms
+                </dt>
                 <dd className="flex flex-wrap gap-1.5">
                   {data.extraction.key_terms.map((t) => (
-                    <span key={t} className="px-2 py-0.5 rounded bg-ink-800 text-xs text-accent-soft">
+                    <span
+                      key={t}
+                      className="border border-foreground px-2 py-0.5 font-mono text-xs"
+                    >
                       {t}
                     </span>
                   ))}
@@ -63,7 +74,7 @@ export default function PaperCard({
               </div>
             </dl>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="border-t border-line pt-4 font-serif text-base italic text-secondary">
               No structured extraction cached yet — build the landscape to generate one.
             </p>
           )}
@@ -75,9 +86,9 @@ export default function PaperCard({
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-500 mb-0.5">{label}</dt>
-      <dd className="text-sm text-slate-300 leading-relaxed">{value}</dd>
+    <div className="py-4">
+      <dt className="mb-1 font-mono text-xs uppercase tracking-widest text-secondary">{label}</dt>
+      <dd className="font-serif text-base leading-relaxed text-foreground">{value}</dd>
     </div>
   );
 }
