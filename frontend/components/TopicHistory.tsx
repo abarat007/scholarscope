@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadHistory, type TopicVisit } from "@/lib/history";
+import { Label } from "@/components/ui/Label";
+import { Rule } from "@/components/ui/Rule";
 
 export default function TopicHistory() {
   const [history, setHistory] = useState<TopicVisit[]>([]);
@@ -14,24 +16,30 @@ export default function TopicHistory() {
   if (history.length === 0) return null;
 
   return (
-    <section className="mt-10">
-      <h2 className="text-sm font-medium text-slate-400 mb-3">Your reading map</h2>
-      <div className="flex flex-wrap gap-2">
-        {history.map((v) => (
-          <Link
-            key={v.topic}
-            href={`/landscape/${encodeURIComponent(v.topic)}`}
-            className="group rounded-lg border border-ink-800 bg-ink-900/40 px-3 py-2 hover:border-accent-dim transition-colors"
-          >
-            <span className="text-sm text-slate-200 group-hover:text-accent-soft">
-              {v.topic}
-            </span>
-            <span className="block text-xs text-slate-500 mt-0.5">
-              {v.lastPaperCount} papers · {new Date(v.visitedAt).toLocaleDateString()}
-            </span>
-          </Link>
-        ))}
+    <section>
+      <div className="mb-6 flex items-baseline justify-between">
+        <Label as="h2">Your reading map</Label>
+        <Label>{String(history.length).padStart(2, "0")} topics</Label>
       </div>
+      <Rule weight="thin" className="mb-2" />
+      <ol>
+        {history.map((v, i) => (
+          <li key={v.topic}>
+            <Link
+              href={`/landscape/${encodeURIComponent(v.topic)}`}
+              className="group grid grid-cols-[auto_1fr_auto] items-baseline gap-5 border-b border-line py-5 transition-colors duration-100 hover:bg-foreground hover:px-4 hover:text-background focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-foreground focus-visible:-outline-offset-[3px]"
+            >
+              <span className="font-mono text-sm tabular-nums text-secondary group-hover:text-background">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="font-display text-2xl italic md:text-3xl">{v.topic}</span>
+              <span className="font-mono text-xs uppercase tracking-widest text-secondary group-hover:text-background/70">
+                {v.lastPaperCount} papers
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

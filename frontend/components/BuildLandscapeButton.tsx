@@ -20,9 +20,9 @@ export default function BuildLandscapeButton({ topic }: { topic: string }) {
     } catch (e) {
       setStatus("error");
       if (e instanceof ApiError && e.status === 503) {
-        setMessage("The LLM provider is unavailable (check API credits). Retrieval still works above.");
+        setMessage("LLM provider unavailable — check API credits. Retrieval below still works.");
       } else if (e instanceof ApiError && e.status === 400) {
-        setMessage(typeof e.detail === "object" ? "Query blocked by input guardrails." : e.message);
+        setMessage("Query blocked by input guardrails.");
       } else {
         setMessage("Landscape build failed. Is the backend running with an API key?");
       }
@@ -30,28 +30,37 @@ export default function BuildLandscapeButton({ topic }: { topic: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-accent-dim/40 bg-accent/5 px-4 py-3">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm text-slate-200">Synthesize a research landscape for this topic</p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Extracts each paper, clusters them, and maps relationships, tensions & open problems.
+    <section className="invert-panel px-6 py-8 md:px-10 md:py-10">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-2xl">
+          <p className="font-mono text-xs uppercase tracking-widest text-background/60">Synthesis</p>
+          <h2 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
+            Build the research landscape.
+          </h2>
+          <p className="mt-3 font-serif text-base text-background/80 md:text-lg">
+            Extract every paper, cluster them, and map the relationships, tensions, and open
+            problems across the field.
           </p>
         </div>
         <button
           onClick={build}
           disabled={status === "building"}
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ink-950 hover:bg-accent-soft transition-colors disabled:opacity-60"
+          className="group flex shrink-0 items-center justify-center gap-3 border-2 border-background bg-background px-8 py-4 font-mono text-xs font-medium uppercase tracking-widest text-foreground transition-colors duration-100 hover:bg-transparent hover:text-background focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-background focus-visible:outline-offset-[3px] disabled:opacity-50"
         >
           {status === "building" ? "Building…" : "Build map"}
+          {status !== "building" && <span aria-hidden>→</span>}
         </button>
       </div>
       {status === "building" && (
-        <p className="text-xs text-slate-400 mt-2 animate-pulse">
-          Extracting papers and synthesizing clusters — this can take a minute…
+        <p className="mt-5 border-t border-background/20 pt-4 font-mono text-xs uppercase tracking-widest text-background/70">
+          Extracting papers · clustering · synthesizing — this can take a minute…
         </p>
       )}
-      {message && <p className="text-xs text-amber-300/90 mt-2">{message}</p>}
-    </div>
+      {message && (
+        <p className="mt-5 border-t border-background/20 pt-4 font-mono text-xs uppercase tracking-widest text-background/80">
+          {message}
+        </p>
+      )}
+    </section>
   );
 }
