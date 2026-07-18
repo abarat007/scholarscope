@@ -19,10 +19,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-5"
     # Frontend dev servers; override via CORS_ORIGINS='["https://…"]' in prod.
+    # 3100 is the `make frontend` default; 3000-3002 cover manual/next-fallback runs.
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3002",
+        "http://localhost:3100",
     ]
     # Sonnet 5 introductory pricing ($/MTok) through 2026-08-31; override via env after.
     llm_input_cost_per_mtok: float = 2.0

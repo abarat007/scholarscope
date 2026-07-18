@@ -28,7 +28,8 @@ reindex:
 	docker compose exec backend python -m src.services.retrieval.reindex
 
 frontend:
-	cd frontend && npm install && npm run dev
+	# Pinned to 3100: 3000 is Langfuse, 3001 may be another local project.
+	cd frontend && npm install && npm run dev -- -p 3100
 
 # Build a few landscapes for a demo (requires ANTHROPIC_API_KEY with credits).
 demo-landscapes:
