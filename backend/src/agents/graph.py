@@ -96,7 +96,7 @@ def build_agent_graph(deps: AgentDeps):
             system=GRADE_SYSTEM_PROMPT,
             user=f"Topic: {state['topic']}\n\nRetrieved paper titles:\n{titles}",
             schema=RelevanceGrade,
-            max_tokens=300,
+            max_tokens=512,
         )
         deps.usage.add(result.usage)
         grade = result.output
@@ -108,7 +108,7 @@ def build_agent_graph(deps: AgentDeps):
             system=REFINE_SYSTEM_PROMPT,
             user=f"Topic: {state['topic']}\nPrevious query: {state['current_query']}",
             schema=RefinedQuery,
-            max_tokens=200,
+            max_tokens=400,
         )
         deps.usage.add(result.usage)
         refined = result.output
