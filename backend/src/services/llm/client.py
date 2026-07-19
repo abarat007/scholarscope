@@ -60,9 +60,15 @@ class AnthropicLLM:
 
         tracer = get_tracer()
         with tracer.generation(name=f"parse:{schema.__name__}", model=self._model) as gen:
+            # Disable extended thinking for structured extraction. On Sonnet 5
+            # omitting `thinking` runs adaptive thinking, which consumes the
+            # max_tokens budget before the JSON is emitted and truncates it.
+            # These schema-constrained calls don't need it — the schema is the
+            # structure — and disabling keeps token budgets predictable.
             response = await self._client.messages.parse(
                 model=self._model,
                 max_tokens=max_tokens,
+                thinking={"type": "disabled"},
                 system=system,
                 messages=[{"role": "user", "content": user}],
                 output_format=schema,
