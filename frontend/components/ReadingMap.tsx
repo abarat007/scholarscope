@@ -3,11 +3,15 @@
 import {
   Background,
   BackgroundVariant,
+  BaseEdge,
   Controls,
+  EdgeLabelRenderer,
   Handle,
+  MarkerType,
   Position,
   ReactFlow,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeProps,
 } from "@xyflow/react";
@@ -74,6 +78,47 @@ function PaperNode({ data }: NodeProps) {
 
 const nodeTypes = { cluster: ClusterNode, paper: PaperNode };
 
+// A visible arced arrow between two related cluster boxes. Bows up above the
+// header row (out of the way of the paper grids) with the label floating above
+// the arc; each relationship is staggered higher so labels never collide.
+const ARC_BASE = 108;
+const ARC_STEP = 62;
+
+function RelationshipEdge({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  markerEnd,
+  label,
+  data,
+}: EdgeProps) {
+  const rank = (data?.rank as number | undefined) ?? 0;
+  const apexY = Math.min(sourceY, targetY) - (ARC_BASE + rank * ARC_STEP);
+  const midX = (sourceX + targetX) / 2;
+  const path = `M ${sourceX},${sourceY} C ${sourceX},${apexY} ${targetX},${apexY} ${targetX},${targetY}`;
+  return (
+    <>
+      <BaseEdge path={path} markerEnd={markerEnd} style={{ stroke: "#000000", strokeWidth: 2 }} />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            className="pointer-events-none max-w-[360px] bg-background px-2 py-1 text-center font-mono text-[10px] uppercase leading-relaxed tracking-widest text-secondary"
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -100%) translate(${midX}px, ${apexY - 8}px)`,
+            }}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const edgeTypes = { relationship: RelationshipEdge };
+
 export default function ReadingMap({
   graph,
   latestVersion,
@@ -136,7 +181,8 @@ export default function ReadingMap({
       cursorX += blockWidth + CLUSTER_GAP;
     });
 
-    // Only cross-cluster relationships — the membership web is gone.
+    // Only cross-cluster relationships — the membership web is gone. Each is a
+    // visible arced arrow; `rank` staggers overlapping arcs to different heights.
     const edges: Edge[] = graph.edges
       .filter((e) => e.type === "relationship")
       .map((e, i) => ({
@@ -146,8 +192,9 @@ export default function ReadingMap({
         sourceHandle: "s",
         targetHandle: "t",
         label: e.label ?? undefined,
-        type: "default",
-        style: { stroke: "#000000", strokeWidth: 2 },
+        type: "relationship",
+        data: { rank: i },
+        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "#000000" },
       }));
 
     return { nodes, edges };
@@ -159,8 +206,9 @@ export default function ReadingMap({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.18 }}
+        fitViewOptions={{ padding: 0.24 }}
         minZoom={0.15}
         nodesConnectable={false}
         proOptions={{ hideAttribution: true }}
