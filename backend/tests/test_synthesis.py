@@ -1,9 +1,18 @@
 from datetime import UTC, datetime
 
 from src.schemas.extraction import PaperExtraction
-from src.schemas.landscape import ClusterDescription, CrossClusterAnalysis, Relationship
+from src.schemas.landscape import (
+    ClusterDescription,
+    ClusterInfo,
+    CrossClusterAnalysis,
+    Relationship,
+)
 from src.services.llm.client import LLMResult, LLMUsage
-from src.services.synthesis.synthesizer import build_landscape
+from src.services.synthesis.synthesizer import (
+    _normalize_cluster_references,
+    analyze_cross_cluster,
+    build_landscape,
+)
 
 
 def _paper_and_extraction(suffix: str, theme: str):
@@ -105,3 +114,65 @@ async def test_build_landscape_clusters_and_synthesizes():
     assert payload.paper_versions == {p.arxiv_id: 1 for p in papers}
     # usage accumulated: 2 cluster calls + 1 cross call
     assert usage.input_tokens == 1500
+
+
+def _cluster(id_: int, name: str) -> ClusterInfo:
+    return ClusterInfo(id=id_, name=name, description="d", paper_ids=[], centroid=[0.0])
+
+
+def test_normalize_rewrites_bare_cluster_id_to_quoted_name():
+    clusters = [_cluster(0, "Cross-Encoder Reranking"), _cluster(1, "Mismatched Cluster")]
+
+    text = "The inclusion of cluster 1 highlights a mismatch with cluster 0's focus."
+
+    normalized = _normalize_cluster_references(text, clusters)
+
+    assert normalized == (
+        'The inclusion of "Mismatched Cluster" highlights a mismatch '
+        'with "Cross-Encoder Reranking"\'s focus.'
+    )
+
+
+def test_normalize_is_case_insensitive_and_handles_hash_or_no_space():
+    clusters = [_cluster(2, "Spatial Omics Integration")]
+    text = "See Cluster #2 and cluster2's papers."
+
+    normalized = _normalize_cluster_references(text, clusters)
+
+    assert normalized.count('"Spatial Omics Integration"') == 2
+
+
+def test_normalize_leaves_unrelated_text_untouched():
+    clusters = [_cluster(0, "A"), _cluster(1, "B")]
+    text = "No numeric cluster references here."
+
+    assert _normalize_cluster_references(text, clusters) == text
+
+
+async def test_analyze_cross_cluster_normalizes_tensions_and_open_problems():
+    clusters = [_cluster(0, "Cross-Encoder Reranking"), _cluster(1, "Mismatched Cluster")]
+
+    class NumericLLM:
+        async def parse(self, *, system, user, schema, max_tokens=2000):
+            return LLMResult(
+                output=CrossClusterAnalysis(
+                    relationships=[
+                        Relationship(
+                            source_cluster_id=0,
+                            target_cluster_id=1,
+                            description="cluster 0 informs cluster 1",
+                        )
+                    ],
+                    tensions=["cluster 1 conflates unrelated fields"],
+                    open_problems=["cluster 0 lacks a benchmark"],
+                ),
+                usage=LLMUsage(10, 5),
+            )
+
+    analysis = await analyze_cross_cluster(NumericLLM(), "topic", clusters, LLMUsage())
+
+    assert analysis.relationships[0].description == (
+        '"Cross-Encoder Reranking" informs "Mismatched Cluster"'
+    )
+    assert analysis.tensions == ['"Mismatched Cluster" conflates unrelated fields']
+    assert analysis.open_problems == ['"Cross-Encoder Reranking" lacks a benchmark']
