@@ -17,7 +17,20 @@ from airflow.decorators import dag, task
 log = logging.getLogger(__name__)
 
 BACKEND_URL = os.environ.get("SCHOLARSCOPE_BACKEND_URL", "http://backend:8000")
-CATEGORIES = ["cs.CL", "cs.AI", "cs.LG"]
+DEFAULT_CATEGORIES = "cs.CL,cs.AI,cs.LG"
+# Comma-separated arXiv category codes. To cover cross-domain topics that
+# collide with CS vocabulary (e.g. "spatial omics" vs. "spatial reasoning"),
+# add the relevant q-bio categories here — they use the same arXiv API/client
+# as CS, so no new ingestion code is needed. Common picks:
+#   q-bio.NC  Neurons and Cognition   q-bio.GN  Genomics
+#   q-bio.QM  Quantitative Methods    q-bio.CB  Cell Behavior
+#   q-bio.TO  Tissues and Organs
+# e.g. ARXIV_INGEST_CATEGORIES=cs.CL,cs.AI,cs.LG,q-bio.NC,q-bio.QM
+CATEGORIES = [
+    c.strip()
+    for c in os.environ.get("ARXIV_INGEST_CATEGORIES", DEFAULT_CATEGORIES).split(",")
+    if c.strip()
+]
 DAYS_BACK = 2
 MAX_RESULTS = 500
 
