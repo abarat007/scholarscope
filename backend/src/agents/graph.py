@@ -80,11 +80,18 @@ def build_agent_graph(deps: AgentDeps):
         return {"topic": topic, "cache_hit": False, "current_query": topic}
 
     async def retrieve(state: AgentState) -> dict:
+        # Proactive optimization: the landscape pipeline already pays LLM
+        # costs downstream (extraction, synthesis), and a bad candidate set
+        # here propagates into every paper the whole build reasons about — so
+        # unlike the plain search endpoints (optimize=False by default), this
+        # path always asks for the BM25/HyDE rewrite. Search degrades
+        # gracefully if it's unavailable (see search.py::_try_optimize).
         hits = await deps.search_fn(
             state["current_query"],
             k=state["paper_count"],
             candidates=max(60, state["paper_count"]),
             rerank=True,
+            optimize=True,
         )
         return {"hits": hits}
 
