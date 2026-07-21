@@ -19,6 +19,7 @@ async def search_hybrid(
     k: TopK = 10,
     candidates: Annotated[int, Query(ge=10, le=100)] = 50,
     rerank: bool = True,
+    optimize: bool = False,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
@@ -29,6 +30,7 @@ async def search_hybrid(
         k=k,
         candidates=candidates,
         rerank=rerank,
+        optimize=optimize,
         category=category,
         published_from=published_from,
         published_to=published_to,
@@ -46,13 +48,19 @@ async def search_hybrid(
 async def search_dense(
     q: QueryText,
     k: TopK = 10,
+    optimize: bool = False,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
 ) -> SearchResponse:
     started = time.perf_counter()
     hits = await search_service.dense_search(
-        q, k=k, category=category, published_from=published_from, published_to=published_to
+        q,
+        k=k,
+        optimize=optimize,
+        category=category,
+        published_from=published_from,
+        published_to=published_to,
     )
     return SearchResponse(
         query=q,
@@ -66,13 +74,19 @@ async def search_dense(
 async def search_bm25(
     q: QueryText,
     k: TopK = 10,
+    optimize: bool = False,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
 ) -> SearchResponse:
     started = time.perf_counter()
     hits = await search_service.bm25_search(
-        q, k=k, category=category, published_from=published_from, published_to=published_to
+        q,
+        k=k,
+        optimize=optimize,
+        category=category,
+        published_from=published_from,
+        published_to=published_to,
     )
     return SearchResponse(
         query=q,
