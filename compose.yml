@@ -66,6 +66,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       SCHOLARSCOPE_BACKEND_URL: http://backend:8000
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ARXIV_INGEST_CATEGORIES: ${ARXIV_INGEST_CATEGORIES:-cs.CL,cs.AI,cs.LG}
     ports:
       - "8080:8080"
     volumes:

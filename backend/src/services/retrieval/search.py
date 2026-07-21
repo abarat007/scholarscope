@@ -5,17 +5,34 @@ exact BM25/k-NN DSL is unit-testable and visible in one place.
 """
 
 import asyncio
+import logging
 from datetime import date
 
+from src.schemas.query_optimization import OptimizedQuery
 from src.schemas.search import SearchHit
 from src.services.ingestion.chunking import paper_chunk
+from src.services.llm.client import get_llm
 from src.services.retrieval.embeddings import get_embedding_service
 from src.services.retrieval.fusion import reciprocal_rank_fusion
 from src.services.retrieval.indexing import INDEX_NAME
 from src.services.retrieval.os_client import get_os_client
+from src.services.retrieval.query_optimizer import optimize_query
 from src.services.retrieval.reranker import get_reranker
 
+log = logging.getLogger(__name__)
+
 SOURCE_FIELDS = ["arxiv_id", "title", "abstract", "primary_category", "published_at"]
+
+
+async def _try_optimize(q: str) -> OptimizedQuery | None:
+    """Best-effort query optimization. Never breaks search — on any failure
+    (no API key, rate limit, provider outage) we fall back to the plain query
+    rather than degrading a feature that otherwise needs no LLM at all."""
+    try:
+        return await optimize_query(q, get_llm())
+    except Exception:
+        log.warning("query optimization failed; using the unoptimized query", exc_info=True)
+        return None
 
 
 def build_filters(
@@ -94,11 +111,23 @@ async def dense_search(
     q: str,
     *,
     k: int = 10,
+    optimize: bool = False,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
+    _optimized: OptimizedQuery | None = None,
 ) -> list[SearchHit]:
-    vector = await asyncio.to_thread(get_embedding_service().embed_query, q)
+    """Dense k-NN search. With optimize=True, embeds a HyDE hypothetical
+    passage instead of the bare query — see query_optimizer.py."""
+    if _optimized is None and optimize:
+        _optimized = await _try_optimize(q)
+
+    if _optimized is not None:
+        embedder = get_embedding_service()
+        vector = (await asyncio.to_thread(embedder.embed_passages, [_optimized.hyde_passage]))[0]
+    else:
+        vector = await asyncio.to_thread(get_embedding_service().embed_query, q)
+
     body = build_knn_query(
         vector, k=k, category=category, published_from=published_from, published_to=published_to
     )
@@ -111,12 +140,24 @@ async def bm25_search(
     q: str,
     *,
     k: int = 10,
+    optimize: bool = False,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
+    _optimized: OptimizedQuery | None = None,
 ) -> list[SearchHit]:
+    """BM25 lexical search. With optimize=True, expands the query with
+    synonyms/acronyms/technical terms before matching — see query_optimizer.py."""
+    if _optimized is None and optimize:
+        _optimized = await _try_optimize(q)
+
+    query_text = _optimized.bm25_query if _optimized is not None else q
     body = build_bm25_query(
-        q, k=k, category=category, published_from=published_from, published_to=published_to
+        query_text,
+        k=k,
+        category=category,
+        published_from=published_from,
+        published_to=published_to,
     )
     resp = await get_os_client().post(f"/{INDEX_NAME}/_search", json=body)
     resp.raise_for_status()
@@ -129,6 +170,7 @@ async def hybrid_search(
     k: int = 10,
     candidates: int = 50,
     rerank: bool = True,
+    optimize: bool = False,
     category: str | None = None,
     published_from: date | None = None,
     published_to: date | None = None,
@@ -139,7 +181,16 @@ async def hybrid_search(
     A/B hybrid vs hybrid+reranker on identical candidate sets. Scores are RRF
     scores when rerank=False and cross-encoder relevance scores when True —
     either way only comparable within a single query's result list.
+
+    With optimize=True, one LLM call produces a BM25-tailored keyword rewrite
+    and a HyDE passage for dense — computed once here and shared by both legs
+    so they optimize against a consistent understanding of the query, and so
+    a single extra round trip (not two) is paid. Reranking always reads the
+    original `q`: the cross-encoder needs no rewriting, and the ranking must
+    reflect what the user actually asked.
     """
+    optimized = await _try_optimize(q) if optimize else None
+
     bm25_hits, dense_hits = await asyncio.gather(
         bm25_search(
             q,
@@ -147,6 +198,7 @@ async def hybrid_search(
             category=category,
             published_from=published_from,
             published_to=published_to,
+            _optimized=optimized,
         ),
         dense_search(
             q,
@@ -154,6 +206,7 @@ async def hybrid_search(
             category=category,
             published_from=published_from,
             published_to=published_to,
+            _optimized=optimized,
         ),
     )
     hits_by_id: dict[str, SearchHit] = {}

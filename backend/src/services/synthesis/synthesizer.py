@@ -6,6 +6,7 @@ count, not paper count.
 """
 
 import asyncio
+import re
 
 from src.config import get_settings
 from src.schemas.extraction import EXTRACTION_SCHEMA_VERSION, PaperExtraction
@@ -29,8 +30,13 @@ CLUSTER_SYSTEM_PROMPT = (
 CROSS_CLUSTER_SYSTEM_PROMPT = (
     "You are analyzing the structure of a research field organized into "
     "clusters. Identify real relationships between clusters, genuine tensions "
-    "or disagreements, and concrete open problems. Reference clusters only by "
-    "the integer ids provided. Never invent clusters, papers, or results."
+    "or disagreements, and concrete open problems. The integer id given for "
+    "each cluster is only for populating source_cluster_id/target_cluster_id "
+    "on relationships — never write a bare id or the phrase 'cluster N' in "
+    "prose. In tensions, open_problems, and relationship descriptions, refer "
+    "to a cluster by its exact quoted name, e.g. \"Cross-Encoder Reranking\", "
+    "so a reader never has to resolve a number. Never invent clusters, "
+    "papers, or results."
 )
 
 MAX_PAPERS_PER_CLUSTER_PROMPT = 15
@@ -79,6 +85,22 @@ async def describe_cluster(
     return description
 
 
+_CLUSTER_ID_RE_TEMPLATE = r"\bcluster\s*#?\s*{id}\b"
+
+
+def _normalize_cluster_references(text: str, clusters: list[ClusterInfo]) -> str:
+    """Rewrite any leftover 'cluster N' (0-indexed id) into the cluster's name.
+
+    Defense in depth: the prompt asks the model to use names, not ids, but
+    structured-output models don't always comply. A reader should never have
+    to mentally resolve a bare number against the UI's 1-indexed labels.
+    """
+    for cluster in clusters:
+        pattern = re.compile(_CLUSTER_ID_RE_TEMPLATE.format(id=cluster.id), re.IGNORECASE)
+        text = pattern.sub(f'"{cluster.name}"', text)
+    return text
+
+
 async def analyze_cross_cluster(
     llm: StructuredLLM, topic: str, clusters: list[ClusterInfo], usage: LLMUsage
 ) -> CrossClusterAnalysis:
@@ -98,6 +120,12 @@ async def analyze_cross_cluster(
         if r.source_cluster_id in valid_ids
         and r.target_cluster_id in valid_ids
         and r.source_cluster_id != r.target_cluster_id
+    ]
+    for r in analysis.relationships:
+        r.description = _normalize_cluster_references(r.description, clusters)
+    analysis.tensions = [_normalize_cluster_references(t, clusters) for t in analysis.tensions]
+    analysis.open_problems = [
+        _normalize_cluster_references(p, clusters) for p in analysis.open_problems
     ]
     return analysis
 
