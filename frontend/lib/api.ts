@@ -102,10 +102,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export function search(
   q: string,
   mode: SearchMode,
-  opts: { k?: number; rerank?: boolean } = {},
+  opts: { k?: number; rerank?: boolean; optimize?: boolean } = {},
 ): Promise<SearchResponse> {
   const params = new URLSearchParams({ q, k: String(opts.k ?? 10) });
   if (mode === "hybrid") params.set("rerank", String(opts.rerank ?? true));
+  if (opts.optimize) params.set("optimize", "true");
   return request<SearchResponse>(`/search/${mode}?${params.toString()}`);
 }
 
